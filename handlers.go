@@ -2,6 +2,7 @@ package main
 
 import (
 	"context"
+	"log"
 	"net/http"
 	"os/user"
 
@@ -28,6 +29,19 @@ func CreatePod(c *gin.Context) {
 	clientset, err := kubernetes.NewForConfig(config)
 	if err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to create kubernetes client"})
+		return
+	}
+
+	ctx := context.Background()
+
+	//List nodes
+	list, err := clientset.CoreV1().Nodes().List(ctx, metav1.ListOptions{})
+	if err != nil {
+		log.Fatalf("Error listing nodes: %v", err)
+	}
+
+	if len(list.Items) == 0 {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "no nodes available in the cluster"})
 		return
 	}
 
