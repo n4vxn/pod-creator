@@ -13,11 +13,17 @@ import (
 	"k8s.io/client-go/tools/clientcmd"            // for kubeconfig
 )
 
+// Input required to create a pod
+type PodInput struct {
+	Name  string `json:"name" binding:"required"`
+	Image string `json:"image" binding:"required"`
+}
+
 // CreatePod handles the creation of a pod
 func CreatePod(c *gin.Context) {
 	usr, _ := user.Current()
 	kubeconfig := usr.HomeDir + "/.kube/config"
-	
+
 	// Load kubeconfig
 	config, err := clientcmd.BuildConfigFromFlags("", kubeconfig)
 	if err != nil {
@@ -29,6 +35,13 @@ func CreatePod(c *gin.Context) {
 	clientset, err := kubernetes.NewForConfig(config)
 	if err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to create kubernetes client"})
+		return
+	}
+
+	// Parse the input from the req body
+	var input PodInput
+	if err := c.ShouldBindJSON(&input); err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "Invalid request payload"})
 		return
 	}
 
@@ -48,13 +61,13 @@ func CreatePod(c *gin.Context) {
 	// Define the pod
 	pod := &v1.Pod{
 		ObjectMeta: metav1.ObjectMeta{
-			Name: "my-first-pod",
+			Name: input.Name,
 		},
 		Spec: v1.PodSpec{
 			Containers: []v1.Container{
 				{
-					Name:  "nginx",
-					Image: "nginx",
+					Name:  input.Name,
+					Image: input.Image,
 				},
 			},
 		},
